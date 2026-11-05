@@ -25,14 +25,15 @@
 # define  uint32_t int
 # define GPIOA_BASE (GPIO_TypeDef*)(AHB_BASE + 0x00000000UL)
 # define RCC_BASE   (RCC_TypeDef*)(AHB_BASE + 0x00003800UL)
-
+# define GPIOC_BASE  (GPIO_TypeDef*)(0x40020800UL)
 
 
 
 typedef struct
 {
     volatile uint32_t Moder;
-    volatile uint32_t Dummy[4]; // not used registers
+    volatile uint32_t Dummy[3]; // not used registers
+    volatile uint32_t IDR;
     volatile uint32_t ODR;
     volatile uint32_t BSRR;
 }GPIO_TypeDef;
@@ -46,22 +47,22 @@ typedef struct
 int main()
 {
     GPIO_TypeDef *gpioa = GPIOA_BASE;
+    GPIO_TypeDef *gpioc = GPIOC_BASE;
     RCC_TypeDef *rcc = RCC_BASE;
-    rcc->RCC |= (1<<0); // Enable GPIOA clock 
+    rcc->RCC |= (1<<0)|(1<<2); // Enable GPIOA & gpioc clock
     gpioa->Moder &= ~(3<<10); // Clear PA5 mode bits
     gpioa->Moder |= (1<<10); // Set PA5 as output
+    gpioc->Moder &= ~(3<<26); //clear and set as input mode in pc13 (user button has active low )
+
     while(1)
     {
+    	if(gpioc->IDR & (1 << 13))
+    	{
     	gpioa->BSRR = (1<<5); // 0 to 15 set a bit
-        for(int i=0; i<100000; i++)
-        {// Delay
-
-        }
+    	}
+    	else
+    	{
         gpioa->BSRR = (1 << 21 );  // 16 to 31 reset a bit  {21=16+5}
-        for(int i=0; i<100000; i++)
-        {// Delay
-
         }
-
     }
 }
