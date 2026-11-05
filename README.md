@@ -1,7 +1,8 @@
 # verify_driver
 
 A minimal STM32F446RETx firmware project that demonstrates controlling a GPIO
-pin by accessing peripheral registers directly.
+pin by accessing peripheral registers directly, including the GPIO bit set/reset
+register (BSRR).
 
 ## What it does
 
@@ -9,7 +10,21 @@ The application in `Src/main.c`:
 
 1. Enables the GPIOA peripheral clock through the RCC register.
 2. Configures PA5 as a general-purpose output.
-3. Toggles PA5 repeatedly, with a software delay between transitions.
+3. Sets PA5 through BSRR, waits in a software delay loop, then resets PA5
+   through BSRR and waits again. Repeating these steps blinks the pin.
+
+### BSRR set and reset
+
+The 32-bit BSRR register controls GPIO output pins without a read-modify-write
+of the output data register (ODR):
+
+- Bits 0-15 set the corresponding GPIO pins. Writing bit 5 (`1 << 5`) sets PA5.
+- Bits 16-31 reset the corresponding GPIO pins. Writing bit 21 (`1 << (16 + 5)`)
+  resets PA5.
+
+Each write changes only the selected pin, so the set/reset operation does not
+disturb other GPIO output bits. In this example, the two BSRR writes alternate
+to turn PA5 on and off.
 
 On an STM32 Nucleo-F446RE board, the user LED (LD2) is connected to PA5, so it
 should blink when the firmware is running. On other hardware, connect an LED

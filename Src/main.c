@@ -18,6 +18,7 @@
 
 
 #include <stdint.h>
+//#include "stm32f4xx.h"
 
 # define AHB_BASE   0x40020000UL
 # define APB1_BASE  0x40000000UL
@@ -33,6 +34,7 @@ typedef struct
     volatile uint32_t Moder;
     volatile uint32_t Dummy[4]; // not used registers
     volatile uint32_t ODR;
+    volatile uint32_t BSRR;
 }GPIO_TypeDef;
 
 typedef struct
@@ -50,10 +52,16 @@ int main()
     gpioa->Moder |= (1<<10); // Set PA5 as output
     while(1)
     {
-    	gpioa->ODR ^= (1<<5);
+    	gpioa->BSRR = (1<<5); // 0 to 15 set a bit
         for(int i=0; i<100000; i++)
         {// Delay
 
         }
+        gpioa->BSRR = (1 << 21 );  // 16 to 31 reset a bit  {21=16+5}
+        for(int i=0; i<100000; i++)
+        {// Delay
+
+        }
+
     }
 }
