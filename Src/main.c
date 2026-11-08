@@ -17,52 +17,36 @@
  */
 
 
-#include <stdint.h>
-//#include "stm32f4xx.h"
-
-# define AHB_BASE   0x40020000UL
-# define APB1_BASE  0x40000000UL
-# define  uint32_t int
-# define GPIOA_BASE (GPIO_TypeDef*)(AHB_BASE + 0x00000000UL)
-# define RCC_BASE   (RCC_TypeDef*)(AHB_BASE + 0x00003800UL)
-# define GPIOC_BASE  (GPIO_TypeDef*)(0x40020800UL)
-
-
-
-typedef struct
-{
-    volatile uint32_t Moder;
-    volatile uint32_t Dummy[3]; // not used registers
-    volatile uint32_t IDR;
-    volatile uint32_t ODR;
-    volatile uint32_t BSRR;
-}GPIO_TypeDef;
-
-typedef struct
-{
-	volatile uint32_t Dummy[12]; // not used registers
-    volatile uint32_t RCC;
-}RCC_TypeDef;
+#include "stdint.h"
+#include "stm32f446xx.h"
+void uart_init();
+void uart_send_string(char *str);
 
 int main()
 {
-    GPIO_TypeDef *gpioa = GPIOA_BASE;
-    GPIO_TypeDef *gpioc = GPIOC_BASE;
-    RCC_TypeDef *rcc = RCC_BASE;
-    rcc->RCC |= (1<<0)|(1<<2); // Enable GPIOA & gpioc clock
-    gpioa->Moder &= ~(3<<10); // Clear PA5 mode bits
-    gpioa->Moder |= (1<<10); // Set PA5 as output
-    gpioc->Moder &= ~(3<<26); //clear and set as input mode in pc13 (user button has active low )
+	uart_init();
+	uart_send_string("Hey you completed usart program tx communication via st link!\n");
 
-    while(1)
-    {
-    	if(gpioc->IDR & (1 << 13))
-    	{
-    	gpioa->BSRR = (1<<5); // 0 to 15 set a bit
-    	}
-    	else
-    	{
-        gpioa->BSRR = (1 << 21 );  // 16 to 31 reset a bit  {21=16+5}
-        }
-    }
+}
+void uart_init()
+{
+RCC->AHB1ENR |= (1<<0); // Enable GPIOA clock	
+GPIOA->MODER |=  1<<5;  // pa2 has been only communicate to usart tx communication
+GPIOA->MODER &= ~(1<<4);
+GPIOA->AFR[0] &=~(1U<<11);
+GPIOA->AFR[0] |=  7u<<8; // Set PA2 to AF7 (USART2_TX)
+
+RCC->APB1ENR |= (1<<17);// Enable USART2 clock
+USART2->BRR = 0x008B; // Baud rate 
+USART2->CR1 |= (1<<3)|(1<<13); // Enable Transmitter and USART
+}
+
+void uart_send_string(char *str)
+{
+	while(*str)
+	{
+		while(!(USART2->SR & (1<<7))); // Wait until TXE is set
+		USART2->DR = (*str & 0xFF); // Send character
+		str++;
+	}
 }
