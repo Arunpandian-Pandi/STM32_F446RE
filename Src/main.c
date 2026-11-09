@@ -19,34 +19,80 @@
 
 #include "stdint.h"
 #include "stm32f446xx.h"
-void uart_init();
+void uart_Txinit();
+char uart2_read();
+void uart_Rxinit();
 void uart_send_string(char *str);
 
+char ret;
 int main()
 {
-	uart_init();
-	uart_send_string("Hey you completed usart program tx communication via st link!\n");
 
-}
-void uart_init()
-{
-RCC->AHB1ENR |= (1<<0); // Enable GPIOA clock	
-GPIOA->MODER |=  1<<5;  // pa2 has been only communicate to usart tx communication
-GPIOA->MODER &= ~(1<<4);
-GPIOA->AFR[0] &=~(1U<<11);
-GPIOA->AFR[0] |=  7u<<8; // Set PA2 to AF7 (USART2_TX)
-
-RCC->APB1ENR |= (1<<17);// Enable USART2 clock
-USART2->BRR = 0x008B; // Baud rate 
-USART2->CR1 |= (1<<3)|(1<<13); // Enable Transmitter and USART
-}
-
-void uart_send_string(char *str)
-{
-	while(*str)
+	//uart_Txinit();
+	//uart_send_string("Hey you completed usart program tx communication via st link!\n");
+	uart_Rxinit();
+	while(1)
 	{
-		while(!(USART2->SR & (1<<7))); // Wait until TXE is set
-		USART2->DR = (*str & 0xFF); // Send character
-		str++;
+		ret = uart2_read();
+		while (!(USART2->SR & (1U << 7))) {} // Wait until transmit data register is empty
+		USART2->DR = (uint8_t)ret; // Echo received character to PuTTY
+
+		if(ret == '1')
+		{
+			GPIOA->BSRR = 1U << 5; // Turn LD2 on
+		}
+		else
+		{
+			GPIOA->BSRR = 1U << 21; // Turn LD2 off
+		}
 	}
+
+
 }
+//void uart_Txinit()
+//{
+//RCC->AHB1ENR |= (1<<0); // Enable GPIOA clock
+//GPIOA->MODER |=  1<<5;  // pa2 has been only communicate to usart tx communication
+//GPIOA->MODER &= ~(1<<4);
+//GPIOA->AFR[0] &=~(1U<<11);
+//GPIOA->AFR[0] |=  7u<<8; // Set PA2 to AF7 (USART2_TX)
+//
+//RCC->APB1ENR |= (1<<17);// Enable USART2 clock
+//USART2->BRR = 0x008B; // Baud rate
+//USART2->CR1 |= (1<<3)|(1<<13); // Enable Transmitter and USART
+//}
+void uart_Rxinit()
+{
+	RCC->AHB1ENR |= (1U << 0); // Enable GPIOA clock
+
+	// Configure PA2 (USART2_TX) and PA3 (USART2_RX) for AF7.
+	GPIOA->MODER &= ~((3U << 4) | (3U << 6));
+	GPIOA->MODER |=  ((2U << 4) | (2U << 6));
+	GPIOA->AFR[0] &= ~((0xFU << 8) | (0xFU << 12));
+	GPIOA->AFR[0] |=  ((7U << 8) | (7U << 12)); 
+
+	// Configure PA5 (LD2) as a GPIO output.
+	GPIOA->MODER &= ~(3U << 10);
+	GPIOA->MODER |=  (1U << 10);
+
+	RCC->APB1ENR |= (1U << 17); // Enable USART2 clock
+	USART2->BRR = 0x008B; // 115200 baud when PCLK1 is 16 MHz
+	USART2->CR1 |= (1U << 2) | (1U << 3) | (1U << 13); // Enable RX, TX, USART
+}
+char uart2_read(void)
+{
+	/*Make sure the recieve data register is not empty */
+	while(!(USART2->SR & (1<<5))){} // Wait until RXNE is set
+	return USART2->DR;
+}
+
+
+//void uart_send_string(char *str)
+//{
+//	while(*str)
+//	{
+//		while(!(USART2->SR & (1<<7))); // Wait until TXE is set
+//		USART2->DR = (*str & 0xFF); // Send character
+//		str++;
+//	}
+//}
